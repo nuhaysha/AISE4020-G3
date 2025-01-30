@@ -1,0 +1,62 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Constants
+R = 8.314  # J/mol·K
+Ea = 132600  # J/mol (activation energy for methane combustion)
+delta_H = -890000  # J/mol (enthalpy of combustion)
+k0 = 1.25e8  # L/mol·s (pre-exponential factor)
+T_initial = 300  # K (initial temperature)
+P_initial = 101325  # Pa (initial pressure)
+
+# Reactor parameters
+U_base = 500  # W/m²·K (heat transfer coefficient)
+A = 10  # m² (reactor surface area)
+flow_rate = 1.0  # mol/s (methane feed rate)
+
+# Generate steady-state scenarios
+n_points = 100
+T_values = np.linspace(T_initial, T_initial + 500, n_points)  # Simulated temperatures (K)
+reaction_rates = k0 * np.exp(-Ea / (R * T_values))  # Reaction rates (mol/s)
+
+# Simulate heat generation and removal
+Q_generated = abs(delta_H) * reaction_rates
+U_values = [U_base if i < 70 else U_base * 0.5 for i in range(n_points)]  # Reduced U for failure
+Q_removed = [U * A * (T - T_initial) for U, T in zip(U_values, T_values)]
+
+# Simulate pressure
+P_values = [P_initial * (T / T_initial) for T in T_values]  # Ideal Gas Law scaling
+
+# Create a DataFrame for analysis
+data = pd.DataFrame({
+    "Temperature (K)": T_values,
+    "Pressure (Pa)": P_values,
+    "Reaction Rate (mol/s)": reaction_rates,
+    "Heat Generated (J/s)": Q_generated,
+    "Heat Removed (J/s)": Q_removed
+})
+
+# Save data to CSV
+data.to_csv("methane_combustion_scenarios.csv", index=False)
+
+# Plot results
+plt.figure(figsize=(12, 8))
+plt.subplot(2, 1, 1)
+plt.plot(T_values, Q_generated, label="Heat Generated (J/s)")
+plt.plot(T_values, Q_removed, label="Heat Removed (J/s)")
+plt.axvline(x=T_values[70], color="red", linestyle="--", label="Cooling Failure")
+plt.xlabel("Temperature (K)")
+plt.ylabel("Heat (J/s)")
+plt.title("Heat Balance in Methane Combustion")
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(T_values, P_values, label="Pressure (Pa)")
+plt.xlabel("Temperature (K)")
+plt.ylabel("Pressure (Pa)")
+plt.title("Pressure Variation in Methane Combustion")
+plt.legend()
+
+plt.tight_layout()
+plt.show()
